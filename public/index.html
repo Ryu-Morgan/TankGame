@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Tank Game</title>
+    <style>
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input-username, #input-direction, #input-amount { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #input-username:focus, #input-direction:focus, #input-amount:focus { outline: none; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #efefef; }
+    </style>
+  </head>
+  
+  <body>
+    <ul id="messages"></ul>
+    <form id="form" action="">
+      <input id="input-username" placeholder="Username" autocomplete="off" />
+      <input id="input-direction" placeholder="Direction (left, right, up, down)" autocomplete="off" />
+      <input id="input-amount" type="number" placeholder="Amount" autocomplete="off" />
+      <button>Send</button>
+    </form>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      var socket = io();
+    
+      var messages = document.getElementById('messages');
+      var form = document.getElementById('form');
+      var inputUsername = document.getElementById('input-username');
+      var inputDirection = document.getElementById('input-direction');
+      var inputAmount = document.getElementById('input-amount');
+    
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (inputUsername.value && inputDirection.value && inputAmount.value) {
+          var playerData = {
+            username: inputUsername.value,
+            direction: inputDirection.value,
+            amount: parseInt(inputAmount.value, 10)
+          };
+          console.log('Emitting player move:', playerData); // Add this line
+          socket.emit('player move', playerData);
+          inputUsername.value = '';
+          inputDirection.value = '';
+          inputAmount.value = '';
+        }
+      });
+    
+      socket.on('player move', function(data) {
+        console.log('Received player move:', data); // Add this line
+        var item = document.createElement('li');
+        item.textContent = `Username: ${data.username}, Direction: ${data.direction}, Amount: ${data.amount}`;
+        messages.appendChild(item);
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+    </script>
+  </body>
+</html>
