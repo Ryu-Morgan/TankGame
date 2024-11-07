@@ -44,7 +44,8 @@ io.on('connection', (socket) => {
     }
   }
 
-  socket.emit('new player', { tankImage: tankImage });
+  console.log(`Assigned tank image: ${tankImage}`);
+  io.emit('new player', { tankImage: tankImage });
 
   socket.on('player move', (data) => {
     console.log('Received player move:', data); // Add this line
@@ -53,6 +54,10 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('user disconnected');
+    let index = takenTanks.indexOf(tankImage);
+    if (index !== -1) {
+      takenTanks.splice(index, 1);
+    }
   });
 });
 
