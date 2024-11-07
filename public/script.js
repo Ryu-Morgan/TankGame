@@ -4,9 +4,10 @@ var socket = io();
 var players = {};
 var playerCount = 0;
 var myTank = 'red_tank.png';
+var blueTank = 'blue_tank.png';
 
 // Function to add a new player
-function addPlayer(tankImage, pos, playerLayer) {
+function addPlayer(tankImage, pos, playerLayer, visible = true) {
   var player = new PixelJS.Player();
   player.addToLayer(playerLayer);
   player.pos = pos;
@@ -20,6 +21,7 @@ function addPlayer(tankImage, pos, playerLayer) {
     speed: 100,
     defaultFrame: 1,
   });
+  player.visible = visible;
 
   players[tankImage] = player;
   playerLayer.registerCollidable(player);
@@ -30,9 +32,11 @@ function addPlayer(tankImage, pos, playerLayer) {
 // Handle new player joining
 socket.on('new player', function (data) {
   console.log('New player joined:', data);
+  myTank = data.tankImage;
   playerCount++;
   if (playerCount === 2) {
-    addPlayer('blue_tank.png', { x: 400, y: 300 }, playerLayer);
+    players[blueTank].visible = true;
+    console.log('Blue player is now visible');
   }
 });
 
@@ -85,6 +89,7 @@ document.onreadystatechange = function () {
 
     // Initial player setup
     addPlayer(myTank, { x: 200, y: 300 }, playerLayer);
+    addPlayer(blueTank, { x: 400, y: 300 }, playerLayer, false); // Add blue player initially invisible
 
     // Movement state for both players
     let keys = {};
