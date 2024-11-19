@@ -55,6 +55,7 @@ app.get("/api/room/:roomID", (req, res) => {
 app.post("/api/create-room", (req, res) => {
   let roomId = Math.random().toString(36).substring(7);
   rooms.push(roomId);
+  console.log("Available rooms:", rooms);
   res.json({ roomId });
 });
 
@@ -75,7 +76,9 @@ io.on("connection", (socket) => {
     if (rooms.includes(roomId)) {
       socket.join(roomId);
       console.log(`User joined room: ${roomId}`);
-      io.to(roomId).emit("new queued player", { playerCount: io.sockets.adapter.rooms.get(roomId).size });
+      io.to(roomId).emit("new queued player", {
+        playerCount: io.sockets.adapter.rooms.get(roomId).size,
+      });
     } else {
       socket.emit("error", { message: "Room not found" });
     }

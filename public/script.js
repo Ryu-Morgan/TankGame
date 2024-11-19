@@ -3,7 +3,7 @@ let socket = io();
 
 let players = {};
 let playerCount = 0;
-let tanks = ['red_tank.png', 'blue_tank.png'];
+let tanks = ["red_tank.png", "blue_tank.png"];
 // get the number of players in the room
 function getPlayersInRoom(roomID) {
   return fetch(`/api/room/${roomID}`)
@@ -19,10 +19,27 @@ socket.emit("simple join", roomID);
 // assign enemyTank to the tank that is not myTank
 let enemyTank = tanks.find((tank) => tank !== myTank);
 
-// Get the number of players in the room
+function addPowerUp(image, powerUpLayer) {
+  let powerUp = powerUpLayer.createEntity();
+  powerUp.pos = { x: 490, y: 350 };
+  powerUp.size = { width: 100, height: 100 };
+  powerUp.asset = new PixelJS.AnimatedSprite();
+  powerUp.asset.prepare({
+    name: image,
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  powerUpLayer.registerCollidable(powerUp);
+
+  console.log("Power-up added:", powerUp);
+  return powerUp;
+}
 
 // Function to add a new player
-function addPlayer(tankImage, pos, playerLayer, visible = true) {
+function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   let player = new PixelJS.Player();
   player.addToLayer(playerLayer);
   player.pos = pos;
@@ -42,6 +59,26 @@ function addPlayer(tankImage, pos, playerLayer, visible = true) {
   playerLayer.registerCollidable(player);
   console.log("Player added:", player);
   playerLayer.redraw = true;
+
+  // Check for collision with power-up
+  let powerUp = addPowerUp("power_up.png", powerUpLayer);
+
+  player.onCollide(function (entity) {
+    if (entity === powerUp) {
+      console.log("Power-up collected!");
+      powerUp.pos = {
+        x: Math.floor(Math.random() * (700 - 100 + 1) + 100),
+        y: Math.floor(Math.random() * (500 - 100 + 1) + 100),
+      };
+      // increase speed of the player for 5 seconds
+      player.velocity = { x: 5, y: 5 };
+      player.speed = 200;
+      setTimeout(() => {
+        player.velocity = { x: 1, y: 1 };
+        player.speed = 100;
+      }, 3000);
+    }
+  });
 }
 
 // Handle player movement
@@ -89,11 +126,20 @@ document.onreadystatechange = function () {
 
     console.log("Background layer:", backgroundLayer);
 
-    let playerLayer = game.createLayer("items");
+    let playerLayer = game.createLayer("players");
+
+    // Power-up layer setup
+    let powerUpLayer = game.createLayer("items");
 
     // Initial player setup
-    addPlayer('red_tank.png', { x: 200, y: 300 }, playerLayer);
-    addPlayer('blue_tank.png', { x: 400, y: 300 }, playerLayer, false); // Add blue player initially invisible
+    addPlayer("red_tank.png", { x: 200, y: 300 }, playerLayer, powerUpLayer);
+    addPlayer(
+      "blue_tank.png",
+      { x: 400, y: 300 },
+      playerLayer,
+      powerUpLayer,
+      false
+    ); // Add blue player initially invisible
 
     // Movement state for both players
     let keys = {};
