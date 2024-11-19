@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Handle "Join Room" button click
   joinRoomButton.addEventListener("click", async () => {
     let roomId = joinIDInput.value;
     if (!roomId) {
@@ -41,14 +42,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let data = await response.json();
       if (response.ok) {
-        // Emit join room event and redirect to game.html
-        socket.emit("join room", { roomId });
+        // Emit join room event and redirect to waiting.html
+        socket.emit("join room", roomId);
         successMessage.textContent = `Joined room: ${roomId}`;
         errorMessage.textContent = ""; // Clear any previous error messages
 
-        // Redirect to game.html, passing the room ID as a query parameter
+        // Redirect to waiting.html, passing the room ID as a query parameter
         setTimeout(() => {
-          window.location.href = `/game.html?${roomId}`;
+          window.location.href = `/waiting/${roomId}`;
         }, 100); // Delay for user to see success message
       } else {
         errorMessage.textContent = data.message || "Room not found.";
@@ -57,10 +58,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       errorMessage.textContent = "Error joining room. Please try again.";
     }
-  });
-  // Display success message on room joined
-  socket.on("room joined", ({ tankImage, players }) => {
-    successMessage.textContent = `Joined room successfully! Your tank: ${tankImage}`;
   });
 
   // Handle errors

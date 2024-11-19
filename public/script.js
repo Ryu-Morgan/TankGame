@@ -3,8 +3,23 @@ let socket = io();
 
 let players = {};
 let playerCount = 0;
-let myTank = "red_tank.png";
-let blueTank = "blue_tank.png";
+let tanks = ['red_tank.png', 'blue_tank.png'];
+// get the number of players in the room
+function getPlayersInRoom(roomID) {
+  return fetch(`/api/room/${roomID}`)
+    .then((response) => response.json())
+    .then((data) => data.playerCount);
+}
+
+// Get the room ID and tankImage from the query parameters
+let urlParams = new URLSearchParams(window.location.search);
+let roomID = urlParams.get("roomId");
+let myTank = urlParams.get("tankImage");
+socket.emit("simple join", roomID);
+// assign enemyTank to the tank that is not myTank
+let enemyTank = tanks.find((tank) => tank !== myTank);
+
+// Get the number of players in the room
 
 // Function to add a new player
 function addPlayer(tankImage, pos, playerLayer, visible = true) {
@@ -28,17 +43,6 @@ function addPlayer(tankImage, pos, playerLayer, visible = true) {
   console.log("Player added:", player);
   playerLayer.redraw = true;
 }
-
-// Handle new player joining
-socket.on("new player", function (data) {
-  console.log("New player joined:", data);
-  myTank = data.tankImage;
-  playerCount++;
-  if (playerCount === 2) {
-    players[blueTank].visible = true;
-    console.log("Blue player is now visible");
-  }
-});
 
 // Handle player movement
 socket.on("player move", function (data) {
@@ -88,8 +92,8 @@ document.onreadystatechange = function () {
     let playerLayer = game.createLayer("items");
 
     // Initial player setup
-    addPlayer(myTank, { x: 200, y: 300 }, playerLayer);
-    addPlayer(blueTank, { x: 400, y: 300 }, playerLayer, false); // Add blue player initially invisible
+    addPlayer('red_tank.png', { x: 200, y: 300 }, playerLayer);
+    addPlayer('blue_tank.png', { x: 400, y: 300 }, playerLayer, false); // Add blue player initially invisible
 
     // Movement state for both players
     let keys = {};
@@ -101,6 +105,7 @@ document.onreadystatechange = function () {
           tankImage: myTank,
           direction: "up",
           amount: 1,
+          roomID: roomID,
         });
       }
       if (keys["s"]) {
@@ -108,6 +113,7 @@ document.onreadystatechange = function () {
           tankImage: myTank,
           direction: "down",
           amount: 1,
+          roomID: roomID,
         });
       }
       if (keys["a"]) {
@@ -115,6 +121,7 @@ document.onreadystatechange = function () {
           tankImage: myTank,
           direction: "left",
           amount: 1,
+          roomID: roomID,
         });
       }
       if (keys["d"]) {
@@ -122,6 +129,7 @@ document.onreadystatechange = function () {
           tankImage: myTank,
           direction: "right",
           amount: 1,
+          roomID: roomID,
         });
       }
     }
