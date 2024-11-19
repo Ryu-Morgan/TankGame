@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Waiting Room</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const socket = io();
+            const playerCountElement = document.getElementById("player-count");
+            const roomId = window.location.pathname.split("/").pop();
+            let playerCount = 0;
+
+            // Emit to socket to join the room
+            socket.emit("join room", roomId);
+
+            socket.on("new queued player", (data) => {
+                playerCount = data.playerCount;
+                playerCountElement.textContent = playerCount;
+            });
+
+            // Start game button click event
+            document.getElementById("start-game").addEventListener("click", () => {
+                if (playerCount !== 2) {
+                    alert("There must be 2 players to start the game");
+                }
+                else {
+                    socket.emit("game transition", roomId);
+                }
+            });
+
+            // Handle game start event
+            socket.on("game transition", (data) => {
+                // look for tankImage key in data object and add it to the URL query string
+                window.location.href = "/game.html?roomId=" + roomId + "&tankImage=" + data.tankImage;
+            });
+
+            // Handle error event
+            socket.on("error", (data) => {
+                alert(data.message);
+                window.location.href = "/";
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Waiting Room</h1>
+    <p>Number of players in queue: <span id="player-count">0</span></p>
+    <button id="start-game">Start Game</button>
+</body>
+</html>

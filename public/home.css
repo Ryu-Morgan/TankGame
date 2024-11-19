@@ -1,0 +1,62 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+  background-color: #213a32;
+  color: #ecf0f1;
+}
+
+.container {
+  text-align: center;
+}
+
+h1 {
+  margin: 20px;
+}
+
+button {
+  padding: 15px;
+  margin: 10px;
+  border: none;
+  border-radius: 10px;
+  background-color: #3498db;
+  color: white;
+  font-size: 1rem;
+}
+
+button:hover {
+  background-color: #1f5375;
+}
+
+#joinRoomSection {
+  margin-top: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+input {
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 5px;
+  margin-right: 10px;
+}
+
+#errorMessage {
+  color: red;
+  margin-top: 20px;
+}
+
+#successMessage {
+  color: rgb(18, 177, 58);
+  margin-top: 20px;
+}
