@@ -3,40 +3,15 @@ let socket = io();
 
 let players = {};
 let playerCount = 0;
+let myTank = null; // Initialize myTank as null
 let tanks = ["red_tank.png", "blue_tank.png"];
-// get the number of players in the room
-function getPlayersInRoom(roomID) {
-  return fetch(`/api/room/${roomID}`)
-    .then((response) => response.json())
-    .then((data) => data.playerCount);
-}
 
-// Get the room ID and tankImage from the query parameters
+// Get the room ID from the query parameters
 let urlParams = new URLSearchParams(window.location.search);
 let roomID = urlParams.get("roomId");
-let myTank = urlParams.get("tankImage");
-socket.emit("simple join", roomID);
-// assign enemyTank to the tank that is not myTank
-let enemyTank = tanks.find((tank) => tank !== myTank);
 
-function addPowerUp(image, powerUpLayer) {
-  let powerUp = powerUpLayer.createEntity();
-  powerUp.pos = { x: 490, y: 350 };
-  powerUp.size = { width: 100, height: 100 };
-  powerUp.asset = new PixelJS.AnimatedSprite();
-  powerUp.asset.prepare({
-    name: image,
-    frames: 1,
-    rows: 1,
-    speed: 20,
-    defaultFrame: 1,
-  });
-
-  powerUpLayer.registerCollidable(powerUp);
-
-  console.log("Power-up added:", powerUp);
-  return powerUp;
-}
+// Join the room
+socket.emit("game start join", roomID);
 
 // Function to add a new player
 function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
@@ -81,6 +56,26 @@ function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   });
 }
 
+// Function to add a power-up
+function addPowerUp(image, powerUpLayer) {
+  let powerUp = powerUpLayer.createEntity();
+  powerUp.pos = { x: 490, y: 350 };
+  powerUp.size = { width: 100, height: 100 };
+  powerUp.asset = new PixelJS.AnimatedSprite();
+  powerUp.asset.prepare({
+    name: image,
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  powerUpLayer.registerCollidable(powerUp);
+
+  console.log("Power-up added:", powerUp);
+  return powerUp;
+}
+
 // Handle player movement
 socket.on("player move", function (data) {
   console.log("Player move:", data);
@@ -101,97 +96,104 @@ socket.on("player move", function (data) {
   }
 });
 
-document.onreadystatechange = function () {
-  if (document.readyState == "complete") {
-    let game = new PixelJS.Engine();
-    game.init({
-      container: "game_container",
-      width: 800,
-      height: 600,
-    });
+// Handle game start
+socket.on("game start", function (playersData) {
+  console.log("Game started", playersData);
 
-    // Background layer setup
-    let backgroundLayer = game.createLayer("background");
-    let grass = backgroundLayer.createEntity();
-    backgroundLayer.static = true;
-    grass.pos = { x: 0, y: 0 };
-    grass.asset = new PixelJS.Tile();
-    grass.asset.prepare({
-      name: "grass.png",
-      size: {
+  // Assign myTank based on the socket ID
+  let myPlayerData = playersData.find(player => player.socketId === socket.id);
+  if (myPlayerData) {
+    myTank = myPlayerData.tankImage;
+  }
+
+  document.onreadystatechange = function () {
+    if (document.readyState == "complete") {
+      let game = new PixelJS.Engine();
+      game.init({
+        container: "game_container",
         width: 800,
         height: 600,
-      },
-    });
+      });
 
-    console.log("Background layer:", backgroundLayer);
+      // Background layer setup
+      let backgroundLayer = game.createLayer("background");
+      let grass = backgroundLayer.createEntity();
+      backgroundLayer.static = true;
+      grass.pos = { x: 0, y: 0 };
+      grass.asset = new PixelJS.Tile();
+      grass.asset.prepare({
+        name: "grass.png",
+        size: {
+          width: 800,
+          height: 600,
+        },
+      });
 
-    let playerLayer = game.createLayer("players");
+      console.log("Background layer:", backgroundLayer);
 
-    // Power-up layer setup
-    let powerUpLayer = game.createLayer("items");
+      let playerLayer = game.createLayer("players");
 
-    // Initial player setup
-    addPlayer("red_tank.png", { x: 200, y: 300 }, playerLayer, powerUpLayer);
-    addPlayer(
-      "blue_tank.png",
-      { x: 400, y: 300 },
-      playerLayer,
-      powerUpLayer,
-      false
-    ); // Add blue player initially invisible
+      // Power-up layer setup
+      let powerUpLayer = game.createLayer("items");
 
-    // Movement state for both players
-    let keys = {};
+      // Initial player setup
+      playersData.forEach((playerData, index) => {
+        let pos = index === 0 ? { x: 200, y: 300 } : { x: 400, y: 300 };
+        addPlayer(playerData.tankImage, pos, playerLayer, powerUpLayer);
+      });
 
-    // Function to capture player movement
-    function move() {
-      if (keys["w"]) {
-        socket.emit("player move", {
-          tankImage: myTank,
-          direction: "up",
-          amount: 1,
-          roomID: roomID,
-        });
+      // Movement state for both players
+      let keys = {};
+
+      // Function to capture player movement
+      function move() {
+        if (keys["w"]) {
+          socket.emit("player move", {
+            tankImage: myTank,
+            direction: "up",
+            amount: 1,
+            roomID: roomID,
+          });
+        }
+        if (keys["s"]) {
+          socket.emit("player move", {
+            tankImage: myTank,
+            direction: "down",
+            amount: 1,
+            roomID: roomID,
+          });
+        }
+        if (keys["a"]) {
+          socket.emit("player move", {
+            tankImage: myTank,
+            direction: "left",
+            amount: 1,
+            roomID: roomID,
+          });
+        }
+        if (keys["d"]) {
+          socket.emit("player move", {
+            tankImage: myTank,
+            direction: "right",
+            amount: 1,
+            roomID: roomID,
+          });
+        }
       }
-      if (keys["s"]) {
-        socket.emit("player move", {
-          tankImage: myTank,
-          direction: "down",
-          amount: 1,
-          roomID: roomID,
-        });
-      }
-      if (keys["a"]) {
-        socket.emit("player move", {
-          tankImage: myTank,
-          direction: "left",
-          amount: 1,
-          roomID: roomID,
-        });
-      }
-      if (keys["d"]) {
-        socket.emit("player move", {
-          tankImage: myTank,
-          direction: "right",
-          amount: 1,
-          roomID: roomID,
-        });
-      }
+
+      // Event listeners for key press and release
+      document.addEventListener("keydown", function (event) {
+        keys[event.key] = true;
+      });
+
+      document.addEventListener("keyup", function (event) {
+        keys[event.key] = false;
+      });
+
+      // Game loop
+      game.loadAndRun(function (elapsedTime, dt) {
+        move();
+      });
     }
-
-    // Event listeners for key press and release
-    document.addEventListener("keydown", function (event) {
-      keys[event.key] = true;
-    });
-
-    document.addEventListener("keyup", function (event) {
-      keys[event.key] = false;
-    });
-
-    // Game loop
-    game.loadAndRun(function (elapsedTime, dt) {
-      move();
-    });
-  }
-};
+  };
+});

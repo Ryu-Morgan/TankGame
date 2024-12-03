@@ -8,11 +8,8 @@ var io = socketIo(server);
 // Tank options
 let tankOptions = ["red_tank.png", "blue_tank.png"];
 
-// List to keep track of loaded tank images
-let takenTanks = {};
-
-// Keep track of rooms
-let rooms = [];
+// Data structure to keep track of players and their tanks in each room
+let roomPlayers = {};
 
 // Middleware to add CORS headers
 app.use((req, res, next) => {
@@ -54,15 +51,14 @@ app.get("/api/room/:roomID", (req, res) => {
 // Create a new room
 app.post("/api/create-room", (req, res) => {
   let roomId = Math.random().toString(36).substring(7);
-  rooms.push(roomId);
-  console.log("Available rooms:", rooms);
+  roomPlayers[roomId] = [];
   res.json({ roomId });
 });
 
 // Join an existing room
 app.post("/api/join-room", express.json(), (req, res) => {
   let { roomId } = req.body;
-  if (rooms.includes(roomId)) {
+  if (roomPlayers[roomId]) {
     res.json({ message: "Room found", roomId });
   } else {
     res.status(404).json({ message: "Room not found" });
@@ -73,7 +69,8 @@ io.on("connection", (socket) => {
   console.log("a user connected");
 
   socket.on("join room", (roomId) => {
-    if (rooms.includes(roomId)) {
+    if (roomPlayers[roomId]) {
+      roomPlayers[roomId].push({ socketId: socket.id });
       socket.join(roomId);
       console.log(`User joined room: ${roomId}`);
       io.to(roomId).emit("new queued player", {
@@ -84,27 +81,22 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("simple join", (roomId) => {
-    // same of join room but we should simply socket.join(roomId)
-    if (rooms.includes(roomId)) {
+  socket.on("game start join", (roomId) => {
+    if (roomPlayers[roomId]) {
       socket.join(roomId);
       console.log(`User joined game room: ${roomId}`);
-    }
-  });
 
-  socket.on("game transition", (roomId) => {
-    if (rooms.includes(roomId)) {
-      console.log(`Game transition in room: ${roomId}`);
-      // send game transition event to all players in the room
-      // for each player in the room, emit game transition event along with their player number
+      // Assign tank images to players in the room
       let playersInRoom = Array.from(io.sockets.adapter.rooms.get(roomId));
-      takenTanks[roomId] = [];
-
-      playersInRoom.forEach((playerSocketId, index) => {
-        let tankImage = tankOptions[index % tankOptions.length];
-        takenTanks[roomId].push(tankImage);
-        io.to(playerSocketId).emit("game transition", { tankImage: tankImage });
+      roomPlayers[roomId] = playersInRoom.map((playerSocketId, index) => {
+        return {
+          socketId: playerSocketId,
+          tankImage: tankOptions[index % tankOptions.length],
+        };
       });
+
+      // Send the player data to all clients in the room
+      io.to(roomId).emit("game start", roomPlayers[roomId]);
     } else {
       socket.emit("error", { message: "Room not found" });
     }
@@ -115,13 +107,14 @@ io.on("connection", (socket) => {
     io.to(data.roomID).emit("player move", data);
   });
 
+  
+
   socket.on("disconnect", () => {
     console.log("user disconnected");
-    for (let roomId in takenTanks) {
-      let index = takenTanks[roomId].indexOf(socket.id);
-      if (index !== -1) {
-        takenTanks[roomId].splice(index, 1);
-      }
+    for (let roomId in roomPlayers) {
+      roomPlayers[roomId] = roomPlayers[roomId].filter(
+        (player) => player.socketId !== socket.id
+      );
     }
   });
 });
