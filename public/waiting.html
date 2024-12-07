@@ -33,7 +33,7 @@
             // Handle game start event
             socket.on("game transition", (data) => {
                 // look for tankImage key in data object and add it to the URL query string
-                window.location.href = "/game.html?roomId=" + roomId + "&tankImage=" + data.tankImage;
+                window.location.href = "/game.html?roomId=" + roomId;
             });
 
             // Handle error event

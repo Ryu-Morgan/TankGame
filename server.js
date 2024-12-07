@@ -14,6 +14,8 @@ let takenTanks = {};
 // Keep track of rooms
 let rooms = [];
 
+let tankRooms = {};
+
 // Middleware to add CORS headers
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
@@ -87,6 +89,22 @@ io.on("connection", (socket) => {
   socket.on("simple join", (roomId) => {
     // same of join room but we should simply socket.join(roomId)
     if (rooms.includes(roomId)) {
+      // we should look for the room in the tankRooms object, if it doesn't exist we should create it (it's a dict containing the roomID as key and an array dicts with the socketID and the tankImage as value).
+      // We populate the dict with the socketID and the non-taken tankImage
+      if (!tankRooms[roomId]) {
+        tankRooms[roomId] = [];
+      }
+      if (!takenTanks[roomId]) {
+        takenTanks[roomId] = [];
+      }
+      // Counterintuitively, takenTanks[roomId] is an array of tankImages that are available to be taken.
+      // So we should just pop the first element of the array and assign it to the player.
+      let tankImage = takenTanks[roomId].shift();
+      // Make sure tankImage is not undefined
+      if (tankImage) {
+        takenTanks[roomId].push(tankImage);
+        tankRooms[roomId].push({ socketID: socket.id, tankImage: tankImage });
+      }
       socket.join(roomId);
       console.log(`User joined game room: ${roomId}`);
     }
@@ -111,6 +129,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("player move", (data) => {
+    // get the socketID of the player who sent the move
+    let socketId = socket.id;
+    // We need to get the tank image for the player who sent the move.
+    // We look in the tankRooms object for the room the player is in (taken from data.roomID) and find the player's tankImage.
+    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    // data does not come with tankImage so we add it to the data object
+    data.tankImage = tankImage;
     console.log("Received player move:", data);
     io.to(data.roomID).emit("player move", data);
   });
