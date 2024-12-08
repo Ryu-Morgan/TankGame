@@ -14,10 +14,9 @@ function getPlayersInRoom(roomID) {
 // Get the room ID and tankImage from the query parameters
 let urlParams = new URLSearchParams(window.location.search);
 let roomID = urlParams.get("roomId");
-let myTank = urlParams.get("tankImage");
+
 socket.emit("simple join", roomID);
 // assign enemyTank to the tank that is not myTank
-let enemyTank = tanks.find((tank) => tank !== myTank);
 
 function addPowerUp(image, powerUpLayer) {
   let powerUp = powerUpLayer.createEntity();
@@ -148,7 +147,6 @@ document.onreadystatechange = function () {
     function move() {
       if (keys["w"]) {
         socket.emit("player move", {
-          tankImage: myTank,
           direction: "up",
           amount: 1,
           roomID: roomID,
@@ -156,7 +154,6 @@ document.onreadystatechange = function () {
       }
       if (keys["s"]) {
         socket.emit("player move", {
-          tankImage: myTank,
           direction: "down",
           amount: 1,
           roomID: roomID,
@@ -164,7 +161,6 @@ document.onreadystatechange = function () {
       }
       if (keys["a"]) {
         socket.emit("player move", {
-          tankImage: myTank,
           direction: "left",
           amount: 1,
           roomID: roomID,
@@ -172,7 +168,6 @@ document.onreadystatechange = function () {
       }
       if (keys["d"]) {
         socket.emit("player move", {
-          tankImage: myTank,
           direction: "right",
           amount: 1,
           roomID: roomID,
