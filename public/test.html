@@ -21,7 +21,7 @@ style="width: 800px; height: 600px; border: 2px solid black"
 
 let players = {};
 let playerCount = 0;
-let tanks = ["red_tank.png", "blue_tank.png"];
+let tanks = ["red_tank.jpg", "blue_tank.jpg"];
 
 // // get the number of players in the room
 // function getPlayersInRoom(roomID) {
@@ -169,9 +169,9 @@ document.onreadystatechange = function () {
     let powerUpLayer = game.createLayer("items");
 
     // Initial player setup
-    addPlayer("red_tank.png", { x: 200, y: 300 }, playerLayer, powerUpLayer);
+    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer, powerUpLayer);
     addPlayer(
-      "blue_tank.png",
+      "blue_tank.jpg",
       { x: 400, y: 300 },
       playerLayer,
       powerUpLayer,
@@ -221,9 +221,9 @@ document.onreadystatechange = function () {
       }
       if (keys[" "]) {
         // doesn't work, seems like loaded is set to false
-        // addPlayer("black_tank.png", { x: 0, y: 0 }, playerLayer, powerUpLayer);
+        // addPlayer("black_tank.jpg", { x: 0, y: 0 }, playerLayer, powerUpLayer);
         // weird fade in and out or ignores sometimes
-        players["red_tank.png"  ].visible = !players["red_tank.png"].visible;
+        players["red_tank.jpg"  ].visible = !players["red_tank.jpg"].visible;
       }
     }
 

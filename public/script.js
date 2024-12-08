@@ -3,7 +3,7 @@ let socket = io();
 
 let players = {};
 let playerCount = 0;
-let tanks = ["red_tank.png", "blue_tank.png"];
+let tanks = ["red_tank.jpg", "blue_tank.jpg"];
 // get the number of players in the room
 function getPlayersInRoom(roomID) {
   return fetch(`/api/room/${roomID}`)
@@ -131,13 +131,13 @@ document.onreadystatechange = function () {
     let powerUpLayer = game.createLayer("items");
 
     // Initial player setup
-    addPlayer("red_tank.png", { x: 200, y: 300 }, playerLayer, powerUpLayer);
+  addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer, powerUpLayer);
     addPlayer(
-      "blue_tank.png",
+      "blue_tank.jpg",
       { x: 400, y: 300 },
       playerLayer,
       powerUpLayer,
-      false
+      // false
     ); // Add blue player initially invisible
 
     // Movement state for both players
