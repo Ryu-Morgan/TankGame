@@ -1725,7 +1725,9 @@ PixelJS.AnimatedSprite.prototype.draw = function (entity) {
             this._currentFrame = this.defaultFrame;   
         }
         
-        entity.layer.drawImage(this.spriteSheet._frameImages[this.row][this._currentFrame], entity.pos.x, entity.pos.y, undefined, entity.opacity);
+        if (entity.visible) {
+            entity.layer.drawImage(this.spriteSheet._frameImages[this.row][this._currentFrame], entity.pos.x, entity.pos.y, undefined, entity.opacity);
+        }
     }
     
     return this;
