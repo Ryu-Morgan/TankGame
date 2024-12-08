@@ -6,7 +6,7 @@ let socketIo = require("socket.io");
 var io = socketIo(server);
 
 // Tank options
-let tankOptions = ["red_tank.png", "blue_tank.png"];
+let tankOptions = ["red_tank.jpg", "blue_tank.jpg"];
 
 // List to keep track of loaded tank images
 let takenTanks = {};
