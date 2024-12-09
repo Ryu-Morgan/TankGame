@@ -3,7 +3,12 @@ let socket = io();
 
 let players = {};
 let playerCount = 0;
-let tanks = ["red_tank.png", "blue_tank.png"];
+let tanks = ["red_tank.jpg", "blue_tank.jpg"];
+let lastDirections = {
+  "red_tank.jpg": "right",
+  "blue_tank.jpg": "left",
+};
+
 // get the number of players in the room
 function getPlayersInRoom(roomID) {
   return fetch(`/api/room/${roomID}`)
@@ -80,9 +85,28 @@ function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   });
 }
 
+function addBullet(pos, playerLayer) {
+  let bullet = playerLayer.createEntity();
+  bullet.pos = pos;
+  bullet.size = { width: 5, height: 5 };
+  bullet.asset = new PixelJS.AnimatedSprite();
+  bullet.asset.prepare({
+    name: "bullet.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  playerLayer.registerCollidable(bullet);
+
+  console.log("Bullet added:", bullet);
+  return bullet;
+}
+
 // Handle player movement
 socket.on("player move", function (data) {
-  console.log("Player move:", data);
+  //console.log("Player move:", data);
   let playerToMove = players[data.tankImage];
   if (playerToMove) {
     if (data.direction === "up") {
@@ -97,6 +121,48 @@ socket.on("player move", function (data) {
     if (data.direction === "right") {
       playerToMove.pos.x += playerToMove.velocity.x * data.amount;
     }
+    lastDirections[data.tankImage] = data.direction; // Update last direction
+  }
+});
+let i = 0;
+socket.on("player shoot", function (data) {
+  let playerShooting = players[data.tankImage];
+  if (playerShooting) {
+    let bulletData = bullets.find((bulletData) => !bulletData.bullet.visible);
+    if (!bulletData) {
+      bulletData = bullets[i];
+      i++;
+      if (i >= bullets.length) {
+        i = 0;
+      }
+    }
+    
+    bulletData.direction = lastDirections[data.tankImage]; // Set bullet direction
+
+    if (bulletData.direction === "right") {
+      bulletData.bullet.pos = {
+      x: playerShooting.pos.x + playerShooting.size.width,
+      y: playerShooting.pos.y + playerShooting.size.height / 2 - bulletData.bullet.size.height / 2,
+      };
+    } else if (bulletData.direction === "left") {
+      bulletData.bullet.pos = {
+      x: playerShooting.pos.x - bulletData.bullet.size.width,
+      y: playerShooting.pos.y + playerShooting.size.height / 2 - bulletData.bullet.size.height / 2,
+      };
+    } else if (bulletData.direction === "up") {
+      bulletData.bullet.pos = {
+      x: playerShooting.pos.x + playerShooting.size.width / 2 - bulletData.bullet.size.width / 2,
+      y: playerShooting.pos.y - bulletData.bullet.size.height,
+      };
+    } else if (bulletData.direction === "down") {
+      bulletData.bullet.pos = {
+      x: playerShooting.pos.x + playerShooting.size.width / 2 - bulletData.bullet.size.width / 2,
+      y: playerShooting.pos.y + playerShooting.size.height,
+      };
+    }
+
+
+    bulletData.bullet.visible = true;
   }
 });
 
@@ -131,18 +197,28 @@ document.onreadystatechange = function () {
     let powerUpLayer = game.createLayer("items");
 
     // Initial player setup
-    addPlayer("red_tank.png", { x: 200, y: 300 }, playerLayer, powerUpLayer);
+    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer, powerUpLayer);
     addPlayer(
-      "blue_tank.png",
+      "blue_tank.jpg",
       { x: 400, y: 300 },
       playerLayer,
       powerUpLayer,
-      false
+      // false
     ); // Add blue player initially invisible
+
+    bullets = [];
+
+    for (let i = 0; i < 10; i++) {
+      bullets.push({ bullet: addBullet({ x: i, y: 0 }, playerLayer), direction: "right" });
+    }
+
+    bullets.forEach((bulletData) => {
+      bulletData.bullet.visible = false;
+    });
 
     // Movement state for both players
     let keys = {};
-
+    let lastShot = Date.now();
     // Function to capture player movement
     function move() {
       if (keys["w"]) {
@@ -173,6 +249,15 @@ document.onreadystatechange = function () {
           roomID: roomID,
         });
       }
+      if (keys[" "]) {
+        if (Date.now() - lastShot > 500) {
+          socket.emit("player shoot", {
+            roomID: roomID,
+          });
+          lastShot = Date.now();
+        }
+      }
+      
     }
 
     // Event listeners for key press and release
@@ -184,9 +269,91 @@ document.onreadystatechange = function () {
       keys[event.key] = false;
     });
 
+    function moveBullets() {
+      bullets.forEach((bulletData) => {
+        if (bulletData.bullet.visible) {
+          if (bulletData.direction === "right") {
+            bulletData.bullet.pos.x += 5;
+          } else if (bulletData.direction === "left") {
+            bulletData.bullet.pos.x -= 5;
+          } else if (bulletData.direction === "up") {
+            bulletData.bullet.pos.y -= 5;
+          } else if (bulletData.direction === "down") {
+            bulletData.bullet.pos.y += 5;
+          }
+
+          if (bulletData.bullet.pos.x > 800 || bulletData.bullet.pos.x < 0 || bulletData.bullet.pos.y > 600 || bulletData.bullet.pos.y < 0) {
+            bulletData.bullet.visible = false;
+          }
+        }
+      });
+    }
+
+    bullets.forEach((bulletData) => {
+      bulletData.bullet.onCollide(function (entity) {
+        if (entity === players["blue_tank.jpg"] || entity === players["red_tank.jpg"]) {
+          bulletData.bullet.visible = false;
+          bulletData.bullet.pos = { x: 0, y: 0 };
+        }
+        if (entity === players["red_tank.jpg"]) {
+          console.log("Red tank hit!");
+          health_tracker["red_tank.jpg"] -= 10;
+        }
+        if (entity === players["blue_tank.jpg"]) {
+          console.log("Blue tank hit!");
+          health_tracker["blue_tank.jpg"] -= 10;
+        }
+        scoreLayer.redraw = true;
+        scoreLayer.drawText(
+          'Red Health: ' + health_tracker["red_tank.jpg"],
+          200,
+          50,
+          '14pt "Trebuchet MS", Helvetica, sans-serif',
+          '#FFFFFF',
+          'left'
+      );
+      scoreLayer.drawText(
+        'Blue Health: ' + health_tracker["blue_tank.jpg"],
+        400,
+        50,
+        '14pt "Trebuchet MS", Helvetica, sans-serif',
+        '#FFFFFF',
+        'left'
+      );
+
+      if (health_tracker["red_tank.jpg"] <= 0) {
+        alert("Blue tank wins!");
+        window.location.href = "/waiting/" + roomID;
+        health_tracker["red_tank.jpg"] = 30;
+      }
+      if (health_tracker["blue_tank.jpg"] <= 0) {
+        alert("Red tank wins!");
+        window.location.href = "/waiting/" + roomID;
+        health_tracker["blue_tank.jpg"] = 30;
+      }
+      });
+
+      
+    });
+
+    var health_tracker = {"blue_tank.jpg": 30, "red_tank.jpg": 30};
+    var scoreLayer = game.createLayer("score");
+    scoreLayer.static = true;
+
     // Game loop
     game.loadAndRun(function (elapsedTime, dt) {
       move();
+      moveBullets();
+
+      // bullets.forEach((bulletData) => {
+      //   if (bulletData.bullet.visible) {
+      //     if (players["blue_tank.jpg"].collidesWith(bulletData.bullet)) {
+      //       bulletData.bullet.visible = false;
+      //       bulletData.bullet.pos = { x: 0, y: 0 };
+      //     }
+      //   }
+      // });
+
     });
   }
 };

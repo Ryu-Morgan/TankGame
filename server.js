@@ -6,7 +6,7 @@ let socketIo = require("socket.io");
 var io = socketIo(server);
 
 // Tank options
-let tankOptions = ["red_tank.png", "blue_tank.png"];
+let tankOptions = ["red_tank.jpg", "blue_tank.jpg"];
 
 // List to keep track of loaded tank images
 let takenTanks = {};
@@ -138,6 +138,15 @@ io.on("connection", (socket) => {
     data.tankImage = tankImage;
     console.log("Received player move:", data);
     io.to(data.roomID).emit("player move", data);
+  });
+
+
+  socket.on("player shoot", (data) => {
+    let socketId = socket.id;
+    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    data.tankImage = tankImage;
+    console.log("Received player shoot:", data);
+    io.to(data.roomID).emit("player shoot", data);
   });
 
   socket.on("disconnect", () => {

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Document</title>
+</head>
+<body>
+<div
+id="game_container"
+style="width: 800px; height: 600px; border: 2px solid black"
+></div>
+
+<script src="pixel.js"></script>
+<!-- <script src="/socket.io/socket.io.js"></script> -->
+<!-- <script src="script.js"></script> -->
+<script>
+
+// Function where rendering is done
+// let socket = io();
+
+let players = {};
+let playerCount = 0;
+let tanks = ["red_tank.jpg", "blue_tank.jpg"];
+
+// // get the number of players in the room
+// function getPlayersInRoom(roomID) {
+//   return fetch(`/api/room/${roomID}`)
+//     .then((response) => response.json())
+//     .then((data) => data.playerCount);
+// }
+
+// // Get the room ID and tankImage from the query parameters
+// let urlParams = new URLSearchParams(window.location.search);
+// let roomID = urlParams.get("roomId");
+// let myTank = urlParams.get("tankImage");
+// socket.emit("simple join", roomID);
+// // assign enemyTank to the tank that is not myTank
+// let enemyTank = tanks.find((tank) => tank !== myTank);
+
+// function addPowerUp(image, powerUpLayer) {
+//   let powerUp = powerUpLayer.createEntity();
+//   powerUp.pos = { x: 490, y: 350 };
+//   powerUp.size = { width: 100, height: 100 };
+//   powerUp.asset = new PixelJS.AnimatedSprite();
+//   powerUp.asset.prepare({
+//     name: image,
+//     frames: 1,
+//     rows: 1,
+//     speed: 20,
+//     defaultFrame: 1,
+//   });
+
+//   powerUpLayer.registerCollidable(powerUp);
+
+//   console.log("Power-up added:", powerUp);
+//   return powerUp;
+// }
+
+
+
+// Function to add a new player
+function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
+  let player = new PixelJS.Player();
+  player.addToLayer(playerLayer);
+  player.pos = pos;
+  player.size = { width: 32, height: 32 };
+  player.velocity = { x: 1, y: 1 };
+  player.asset = new PixelJS.AnimatedSprite();
+  player.asset.prepare({
+    name: tankImage,
+    frames: 3,
+    rows: 4,
+    speed: 100,
+    defaultFrame: 1,
+  });
+  player.visible = visible;
+
+  players[tankImage] = player;
+  playerLayer.registerCollidable(player);
+  console.log("Player added:", player);
+  playerLayer.redraw = true;
+
+  // // Check for collision with power-up
+  // let powerUp = addPowerUp("power_up.png", powerUpLayer);
+
+  // player.onCollide(function (entity) {
+  //   if (entity === powerUp) {
+  //     console.log("Power-up collected!");
+  //     powerUp.pos = {
+  //       x: Math.floor(Math.random() * (700 - 100 + 1) + 100),
+  //       y: Math.floor(Math.random() * (500 - 100 + 1) + 100),
+  //     };
+  //     // increase speed of the player for 5 seconds
+  //     player.velocity = { x: 5, y: 5 };
+  //     player.speed = 200;
+  //     setTimeout(() => {
+  //       player.velocity = { x: 1, y: 1 };
+  //       player.speed = 100;
+  //     }, 3000);
+  //   }
+  // });
+}
+function addBullet(pos, playerLayer) {
+  let bullet = playerLayer.createEntity();
+  bullet.pos = pos;
+  bullet.size = { width: 16, height: 5 };
+  bullet.asset = new PixelJS.AnimatedSprite();
+  bullet.asset.prepare({
+    name: "bullet.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  playerLayer.registerCollidable(bullet);
+
+  console.log("Bullet added:", bullet);
+  return bullet;
+}
+// Handle player movement
+// socket.on("player move", function (data) {
+//   console.log("Player move:", data);
+//   let playerToMove = players[data.tankImage];
+//   if (playerToMove) {
+//     if (data.direction === "up") {
+//       playerToMove.pos.y -= playerToMove.velocity.y * data.amount;
+//     }
+//     if (data.direction === "down") {
+//       playerToMove.pos.y += playerToMove.velocity.y * data.amount;
+//     }
+//     if (data.direction === "left") {
+//       playerToMove.pos.x -= playerToMove.velocity.x * data.amount;
+//     }
+//     if (data.direction === "right") {
+//       playerToMove.pos.x += playerToMove.velocity.x * data.amount;
+//     }
+//   }
+// });
+function playerMove(data) {
+  // console.log("Player move:", data);
+  let playerToMove = players[data.tankImage];
+  if (playerToMove) {
+    if (data.direction === "up") {
+      playerToMove.pos.y -= playerToMove.velocity.y * data.amount;
+    }
+    if (data.direction === "down") {
+      playerToMove.pos.y += playerToMove.velocity.y * data.amount;
+    }
+    if (data.direction === "left") {
+      playerToMove.pos.x -= playerToMove.velocity.x * data.amount;
+    }
+    if (data.direction === "right") {
+      playerToMove.pos.x += playerToMove.velocity.x * data.amount;
+    }
+  }
+}
+
+document.onreadystatechange = function () {
+  if (document.readyState == "complete") {
+    let game = new PixelJS.Engine();
+    game.init({
+      container: "game_container",
+      width: 800,
+      height: 600,
+    });
+
+    // Background layer setup
+    let backgroundLayer = game.createLayer("background");
+    let grass = backgroundLayer.createEntity();
+    backgroundLayer.static = true;
+    grass.pos = { x: 0, y: 0 };
+    grass.asset = new PixelJS.Tile();
+    grass.asset.prepare({
+      name: "grass.png",
+      size: {
+        width: 800,
+        height: 600,
+      },
+    });
+
+    console.log("Background layer:", backgroundLayer);
+
+    let playerLayer = game.createLayer("players");
+
+    // Power-up layer setup
+    let powerUpLayer = game.createLayer("items");
+
+    // Initial player setup
+    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer, powerUpLayer);
+    addPlayer(
+      "blue_tank.jpg",
+      { x: 400, y: 300 },
+      playerLayer,
+      powerUpLayer,
+      true,
+    ); // Add blue player initially invisible
+    bullets = [];
+    // Create 5 bullets and push them to the bullets array
+    for (let i = 0; i < 10; i++) {
+      bullets.push(addBullet({ x: i, y: 0 }, playerLayer));
+    }
+
+    // Make all the bullets invisible initially
+    bullets.forEach((bullet) => {
+      bullet.visible = false;
+    });
+
+    // Movement state for both players
+    let keys = {};
+    let lastShot = Date.now();
+    let i = 0;
+    // Function to capture player movement
+    function move() {
+      if (keys["w"]) {
+        playerMove({ direction: "up", tankImage: tanks[0], amount: 1 });
+        // socket.emit("player move", {
+        //   tankImage: myTank,
+        //   direction: "up",
+        //   amount: 1,
+        //   roomID: roomID,
+        // });
+      }
+      if (keys["s"]) {
+        playerMove({ direction: "down", tankImage: tanks[0], amount: 1 });
+        // socket.emit("player move", {
+        //   tankImage: myTank,
+        //   direction: "down",
+        //   amount: 1,
+        //   roomID: roomID,
+        // });
+      }
+      if (keys["a"]) {
+        playerMove({ direction: "left", tankImage: tanks[0], amount: 1 });
+        // socket.emit("player move", {
+        //   tankImage: myTank,
+        //   direction: "left",
+        //   amount: 1,
+        //   roomID: roomID,
+        // });
+      }
+      if (keys["d"]) {
+        playerMove({ direction: "right", tankImage: tanks[0], amount: 1 });
+        // socket.emit("player move", {
+        //   tankImage: myTank,
+        //   direction: "right",
+        //   amount: 1,
+        //   roomID: roomID,
+        // });
+      }
+      if (keys[" "]) {
+
+        // doesn't work, seems like loaded is set to false
+        // addPlayer("black_tank.jpg", { x: 0, y: 0 }, playerLayer, powerUpLayer);
+        // weird fade in and out or ignores sometimes
+        // Only allow one command every 0.5 seconds
+
+        // players["red_tank.jpg"].visible = !players["red_tank.jpg"].visible;
+        if (Date.now() - lastShot > 500) {
+
+          // Find the first bullet that is not visible and set it to visible
+          let bullet = bullets.find((bullet) => !bullet.visible);
+          // if bullet doesn't exist, return bullets[i] and increment i
+          if (!bullet) {
+            bullet = bullets[i];
+            i++;
+            if (i >= bullets.length) {
+              i = 0;
+            }
+          }
+
+          // Put the bullet in front of the player
+          bullet.pos = {
+            x: players["red_tank.jpg"].pos.x + 32,
+            y: players["red_tank.jpg"].pos.y + 4,
+          };
+
+          // Make the bullet visible
+          bullet.visible = true;
+
+
+          lastShot = Date.now();
+        }
+
+      }
+    }
+
+    // Event listeners for key press and release
+    document.addEventListener("keydown", function (event) {
+      console.log(event.key)
+      keys[event.key] = true;
+    });
+
+    document.addEventListener("keyup", function (event) {
+      keys[event.key] = false;
+    });
+
+    function moveBullets() {
+      bullets.forEach((bullet) => {
+        if (bullet.visible) {
+          bullet.pos.x += 5;
+          if (bullet.pos.x > 800) {
+            bullet.visible = false;
+          }
+        }
+      });
+    }
+
+    // Game loop
+    game.loadAndRun(function (elapsedTime, dt) {
+      move();
+      moveBullets();
+
+      // Add collision for bullets, if it collides with the enemy tank, make it invisible and set position of bullet to 0,0
+      bullets.forEach((bullet) => {
+        if (bullet.visible) {
+          if (players["blue_tank.jpg"].collidesWith(bullet)) {
+            bullet.visible = false;
+            bullet.pos = { x: 0, y: 0 };
+          }
+        }
+      });
+
+
+    });
+  }
+};
+
+
+</script>
+</body>
+</html>
