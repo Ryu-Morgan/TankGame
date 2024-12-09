@@ -14,6 +14,8 @@ let takenTanks = {};
 // Keep track of rooms
 let rooms = [];
 
+let powerups = [];
+
 let tankRooms = {};
 
 // Middleware to add CORS headers
@@ -133,17 +135,37 @@ io.on("connection", (socket) => {
     let socketId = socket.id;
     // We need to get the tank image for the player who sent the move.
     // We look in the tankRooms object for the room the player is in (taken from data.roomID) and find the player's tankImage.
-    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    let tankImage = tankRooms[data.roomID].find(
+      (player) => player.socketID === socketId
+    ).tankImage;
     // data does not come with tankImage so we add it to the data object
     data.tankImage = tankImage;
     console.log("Received player move:", data);
     io.to(data.roomID).emit("player move", data);
   });
 
+  let lastCollect = Date.now();
+  // Handle power-up collection
+  socket.on("powerup collected", (data) => {
+    let socketId = socket.id;
+    // add a delay to prevent spamming
+    if (Date.now() - lastCollect > 500) {
+      let tankImage = tankRooms[data.roomID].find(
+        (player) => player.socketID === socketId
+      ).tankImage;
+      data.tankImage = tankImage;
+      data.pos = { x: Math.random() * 800, y: Math.random() * 600 };
+      console.log("Received powerup collected:", data);
+      io.to(data.roomID).emit("powerup collected", data);
+    }
+    lastCollect = Date.now();
+  });
 
   socket.on("player shoot", (data) => {
     let socketId = socket.id;
-    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    let tankImage = tankRooms[data.roomID].find(
+      (player) => player.socketID === socketId
+    ).tankImage;
     data.tankImage = tankImage;
     console.log("Received player shoot:", data);
     io.to(data.roomID).emit("player shoot", data);

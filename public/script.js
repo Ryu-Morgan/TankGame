@@ -8,7 +8,9 @@ let lastDirections = {
   "red_tank.jpg": "right",
   "blue_tank.jpg": "left",
 };
-
+let walls = [];
+let powerups = [];
+let powerUp;
 // get the number of players in the room
 function getPlayersInRoom(roomID) {
   return fetch(`/api/room/${roomID}`)
@@ -23,31 +25,30 @@ let roomID = urlParams.get("roomId");
 socket.emit("simple join", roomID);
 // assign enemyTank to the tank that is not myTank
 
-function addPowerUp(image, powerUpLayer) {
-  let powerUp = powerUpLayer.createEntity();
-  powerUp.pos = { x: 490, y: 350 };
+function addPowerUp(pos, playerLayer) {
+  let powerUp = playerLayer.createEntity();
+  powerUp.pos = pos;
   powerUp.size = { width: 100, height: 100 };
   powerUp.asset = new PixelJS.AnimatedSprite();
   powerUp.asset.prepare({
-    name: image,
+    name: "power_up.png",
     frames: 1,
     rows: 1,
     speed: 20,
     defaultFrame: 1,
   });
 
-  powerUpLayer.registerCollidable(powerUp);
+  playerLayer.registerCollidable(powerUp);
 
   console.log("Power-up added:", powerUp);
   return powerUp;
 }
 
-// Function to add a new player
-function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
+function addPlayer(tankImage, pos, playerLayer, visible = true) {
   let player = new PixelJS.Player();
   player.addToLayer(playerLayer);
   player.pos = pos;
-  player.size = { width: 32, height: 32 };
+  player.size = { width: 25, height: 20 };
   player.velocity = { x: 1, y: 1 };
   player.asset = new PixelJS.AnimatedSprite();
   player.asset.prepare({
@@ -62,33 +63,12 @@ function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   players[tankImage] = player;
   playerLayer.registerCollidable(player);
   console.log("Player added:", player);
-  playerLayer.redraw = true;
-
-  // Check for collision with power-up
-  let powerUp = addPowerUp("power_up.png", powerUpLayer);
-
-  player.onCollide(function (entity) {
-    if (entity === powerUp) {
-      console.log("Power-up collected!");
-      powerUp.pos = {
-        x: Math.floor(Math.random() * (700 - 100 + 1) + 100),
-        y: Math.floor(Math.random() * (500 - 100 + 1) + 100),
-      };
-      // increase speed of the player for 5 seconds
-      player.velocity = { x: 5, y: 5 };
-      player.speed = 200;
-      setTimeout(() => {
-        player.velocity = { x: 1, y: 1 };
-        player.speed = 100;
-      }, 3000);
-    }
-  });
 }
 
 function addBullet(pos, playerLayer) {
   let bullet = playerLayer.createEntity();
   bullet.pos = pos;
-  bullet.size = { width: 5, height: 5 };
+  bullet.size = { width: 5, height: 2 };
   bullet.asset = new PixelJS.AnimatedSprite();
   bullet.asset.prepare({
     name: "bullet.png",
@@ -104,26 +84,98 @@ function addBullet(pos, playerLayer) {
   return bullet;
 }
 
+function addHorizontalWall(pos, playerLayer) {
+  let wall = playerLayer.createEntity();
+  wall.pos = pos;
+  wall.size = { width: 100, height: 10 };
+  wall.asset = new PixelJS.AnimatedSprite();
+  wall.asset.prepare({
+    name: "wall_top.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  playerLayer.registerCollidable(wall);
+
+  console.log("Bullet added:", wall);
+  return wall;
+}
+
+function addVerticalWall(pos, playerLayer) {
+  let wall = playerLayer.createEntity();
+  wall.pos = pos;
+  wall.size = { width: 10, height: 100 };
+  wall.asset = new PixelJS.AnimatedSprite();
+  wall.asset.prepare({
+    name: "wall_right.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 0,
+  });
+
+  playerLayer.registerCollidable(wall);
+
+  console.log("Bullet added:", wall);
+  return wall;
+}
+
 // Handle player movement
 socket.on("player move", function (data) {
-  //console.log("Player move:", data);
+  // console.log(data);
   let playerToMove = players[data.tankImage];
+
+  // We should check if that position contains a wall, if it does we should just return. There aren't helper functions for this
+  // So we need to go through our walls array and check if the player would collide with any of them if they moved
+
   if (playerToMove) {
+    let newPos = { ...playerToMove.pos };
     if (data.direction === "up") {
-      playerToMove.pos.y -= playerToMove.velocity.y * data.amount;
+      newPos.y -= playerToMove.velocity.y * data.amount;
     }
     if (data.direction === "down") {
-      playerToMove.pos.y += playerToMove.velocity.y * data.amount;
+      newPos.y += playerToMove.velocity.y * data.amount;
     }
     if (data.direction === "left") {
-      playerToMove.pos.x -= playerToMove.velocity.x * data.amount;
+      newPos.x -= playerToMove.velocity.x * data.amount;
     }
     if (data.direction === "right") {
-      playerToMove.pos.x += playerToMove.velocity.x * data.amount;
+      newPos.x += playerToMove.velocity.x * data.amount;
     }
-    lastDirections[data.tankImage] = data.direction; // Update last direction
+
+    // Check for collision with walls
+    let collision = false;
+    let collisionPowerUp = false;
+
+    walls.forEach((wall) => {
+      if (
+        newPos.x < wall.pos.x + wall.size.width &&
+        newPos.x + playerToMove.size.width > wall.pos.x &&
+        newPos.y < wall.pos.y + wall.size.height &&
+        newPos.y + playerToMove.size.height > wall.pos.y
+      ) {
+        collision = true;
+      }
+    });
+
+    if (!collision) {
+      playerToMove.pos = newPos;
+      lastDirections[data.tankImage] = data.direction; // Update last direction
+    }
   }
 });
+
+socket.on;
+
+// power-up collected event
+socket.on("powerup collected", function (data) {
+  console.log("Power-up collected by:", data.tankImage);
+  // for each powerup in powerups, set the position based on data
+  powerUp.pos = data.pos;
+});
+
 let i = 0;
 socket.on("player shoot", function (data) {
   let playerShooting = players[data.tankImage];
@@ -136,31 +188,42 @@ socket.on("player shoot", function (data) {
         i = 0;
       }
     }
-    
+
     bulletData.direction = lastDirections[data.tankImage]; // Set bullet direction
 
     if (bulletData.direction === "right") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x + playerShooting.size.width,
-      y: playerShooting.pos.y + playerShooting.size.height / 2 - bulletData.bullet.size.height / 2,
+        x: playerShooting.pos.x + playerShooting.size.width,
+        y:
+          playerShooting.pos.y +
+          playerShooting.size.height / 2 -
+          bulletData.bullet.size.height / 2,
       };
     } else if (bulletData.direction === "left") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x - bulletData.bullet.size.width,
-      y: playerShooting.pos.y + playerShooting.size.height / 2 - bulletData.bullet.size.height / 2,
+        x: playerShooting.pos.x - bulletData.bullet.size.width,
+        y:
+          playerShooting.pos.y +
+          playerShooting.size.height / 2 -
+          bulletData.bullet.size.height / 2,
       };
     } else if (bulletData.direction === "up") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x + playerShooting.size.width / 2 - bulletData.bullet.size.width / 2,
-      y: playerShooting.pos.y - bulletData.bullet.size.height,
+        x:
+          playerShooting.pos.x +
+          playerShooting.size.width / 2 -
+          bulletData.bullet.size.width / 2,
+        y: playerShooting.pos.y - bulletData.bullet.size.height,
       };
     } else if (bulletData.direction === "down") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x + playerShooting.size.width / 2 - bulletData.bullet.size.width / 2,
-      y: playerShooting.pos.y + playerShooting.size.height,
+        x:
+          playerShooting.pos.x +
+          playerShooting.size.width / 2 -
+          bulletData.bullet.size.width / 2,
+        y: playerShooting.pos.y + playerShooting.size.height,
       };
     }
-
 
     bulletData.bullet.visible = true;
   }
@@ -193,23 +256,35 @@ document.onreadystatechange = function () {
 
     let playerLayer = game.createLayer("players");
 
-    // Power-up layer setup
-    let powerUpLayer = game.createLayer("items");
+    powerUp = addPowerUp({ x: 490, y: 350 }, playerLayer);
 
     // Initial player setup
-    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer, powerUpLayer);
-    addPlayer(
-      "blue_tank.jpg",
-      { x: 400, y: 300 },
-      playerLayer,
-      powerUpLayer,
-      // false
-    ); // Add blue player initially invisible
+    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer);
+    addPlayer("blue_tank.jpg", { x: 450, y: 300 }, playerLayer); // Add blue player initially invisible
+
+    // For each player in players, we should add a handle to set velocity to 0 if colliding with wall, and back to 1 if not colliding with wall
 
     bullets = [];
 
+    // Walls around red tank
+    walls.push(addHorizontalWall({ x: 175, y: 240 }, playerLayer));
+    walls.push(addVerticalWall({ x: 265, y: 250 }, playerLayer));
+    walls.push(addHorizontalWall({ x: 175, y: 350 }, playerLayer));
+
+    // Walls around blue tank
+    walls.push(addHorizontalWall({ x: 385, y: 240 }, playerLayer));
+    walls.push(addVerticalWall({ x: 385, y: 250 }, playerLayer));
+    walls.push(addHorizontalWall({ x: 385, y: 350 }, playerLayer));
+
+    walls.push(addVerticalWall({ x: 209, y: 93 }, playerLayer));
+
+    walls.push(addVerticalWall({ x: 440, y: 393 }, playerLayer));
+
     for (let i = 0; i < 10; i++) {
-      bullets.push({ bullet: addBullet({ x: i, y: 0 }, playerLayer), direction: "right" });
+      bullets.push({
+        bullet: addBullet({ x: i, y: 0 }, playerLayer),
+        direction: "right",
+      });
     }
 
     bullets.forEach((bulletData) => {
@@ -257,7 +332,6 @@ document.onreadystatechange = function () {
           lastShot = Date.now();
         }
       }
-      
     }
 
     // Event listeners for key press and release
@@ -282,19 +356,50 @@ document.onreadystatechange = function () {
             bulletData.bullet.pos.y += 5;
           }
 
-          if (bulletData.bullet.pos.x > 800 || bulletData.bullet.pos.x < 0 || bulletData.bullet.pos.y > 600 || bulletData.bullet.pos.y < 0) {
+          if (
+            bulletData.bullet.pos.x > 800 ||
+            bulletData.bullet.pos.x < 0 ||
+            bulletData.bullet.pos.y > 600 ||
+            bulletData.bullet.pos.y < 0
+          ) {
             bulletData.bullet.visible = false;
           }
         }
       });
     }
 
+    powerUp.onCollide(function (entity) {
+      if (entity === players["red_tank.jpg"]) {
+        console.log("Red tank collected power-up!");
+        socket.emit("powerup collected", { roomID: roomID });
+        // set players["red_tank.jpg"] velocity to 5 for 2 seconds, and then back to 1.'
+        players["red_tank.jpg"].velocity = { x: 5, y: 5 };
+        setTimeout(() => {
+          players["red_tank.jpg"].velocity = { x: 1, y: 1 };
+        }, 2000);
+      }
+      if (entity === players["blue_tank.jpg"]) {
+        console.log("Blue tank collected power-up!");
+
+        players["blue_tank.jpg"].velocity = { x: 5, y: 5 };
+
+        setTimeout(() => {
+          players["blue_tank.jpg"].velocity = { x: 1, y: 1 };
+        }, 2000);
+
+        socket.emit("powerup collected", { roomID: roomID });
+      }
+    });
+
     bullets.forEach((bulletData) => {
       bulletData.bullet.onCollide(function (entity) {
-        if (entity === players["blue_tank.jpg"] || entity === players["red_tank.jpg"]) {
-          bulletData.bullet.visible = false;
-          bulletData.bullet.pos = { x: 0, y: 0 };
+        // Only hide if bullet isn't colliding with powerup
+        if (entity === powerUp || bulletData.bullet.visible === false) {
+          return;
         }
+        console.log("Bullet hit:", entity);
+        bulletData.bullet.visible = false;
+        bulletData.bullet.pos = { x: 0, y: 0 };
         if (entity === players["red_tank.jpg"]) {
           console.log("Red tank hit!");
           health_tracker["red_tank.jpg"] -= 10;
@@ -305,41 +410,55 @@ document.onreadystatechange = function () {
         }
         scoreLayer.redraw = true;
         scoreLayer.drawText(
-          'Red Health: ' + health_tracker["red_tank.jpg"],
+          "Red Health: " + health_tracker["red_tank.jpg"],
           200,
           50,
           '14pt "Trebuchet MS", Helvetica, sans-serif',
-          '#FFFFFF',
-          'left'
-      );
-      scoreLayer.drawText(
-        'Blue Health: ' + health_tracker["blue_tank.jpg"],
-        400,
-        50,
-        '14pt "Trebuchet MS", Helvetica, sans-serif',
-        '#FFFFFF',
-        'left'
-      );
+          "#FFFFFF",
+          "left"
+        );
+        scoreLayer.drawText(
+          "Blue Health: " + health_tracker["blue_tank.jpg"],
+          400,
+          50,
+          '14pt "Trebuchet MS", Helvetica, sans-serif',
+          "#FFFFFF",
+          "left"
+        );
 
-      if (health_tracker["red_tank.jpg"] <= 0) {
-        alert("Blue tank wins!");
-        window.location.href = "/waiting/" + roomID;
-        health_tracker["red_tank.jpg"] = 30;
-      }
-      if (health_tracker["blue_tank.jpg"] <= 0) {
-        alert("Red tank wins!");
-        window.location.href = "/waiting/" + roomID;
-        health_tracker["blue_tank.jpg"] = 30;
-      }
+        if (health_tracker["red_tank.jpg"] <= 0) {
+          alert("Blue tank wins!");
+          window.location.href = "/waiting/" + roomID;
+          health_tracker["red_tank.jpg"] = 30;
+        }
+        if (health_tracker["blue_tank.jpg"] <= 0) {
+          alert("Red tank wins!");
+          window.location.href = "/waiting/" + roomID;
+          health_tracker["blue_tank.jpg"] = 30;
+        }
       });
-
-      
     });
 
-    var health_tracker = {"blue_tank.jpg": 30, "red_tank.jpg": 30};
+    var health_tracker = { "blue_tank.jpg": 30, "red_tank.jpg": 30 };
     var scoreLayer = game.createLayer("score");
     scoreLayer.static = true;
-
+    scoreLayer.redraw = true;
+    scoreLayer.drawText(
+      "Red Health: " + health_tracker["red_tank.jpg"],
+      200,
+      50,
+      '14pt "Trebuchet MS", Helvetica, sans-serif',
+      "#FFFFFF",
+      "left"
+    );
+    scoreLayer.drawText(
+      "Blue Health: " + health_tracker["blue_tank.jpg"],
+      400,
+      50,
+      '14pt "Trebuchet MS", Helvetica, sans-serif',
+      "#FFFFFF",
+      "left"
+    );
     // Game loop
     game.loadAndRun(function (elapsedTime, dt) {
       move();
@@ -353,7 +472,6 @@ document.onreadystatechange = function () {
       //     }
       //   }
       // });
-
     });
   }
 };
