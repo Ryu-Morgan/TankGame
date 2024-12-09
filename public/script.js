@@ -66,7 +66,7 @@ function addPlayer(tankImage, pos, playerLayer, visible = true) {
 function addBullet(pos, playerLayer) {
   let bullet = playerLayer.createEntity();
   bullet.pos = pos;
-  bullet.size = { width: 5, height: 5 };
+  bullet.size = { width: 5, height: 2 };
   bullet.asset = new PixelJS.AnimatedSprite();
   bullet.asset.prepare({
     name: "bullet.png",
@@ -85,7 +85,7 @@ function addBullet(pos, playerLayer) {
 function addHorizontalWall(pos, playerLayer) {
   let wall = playerLayer.createEntity();
   wall.pos = pos;
-  wall.size = { width: 100, height: 100 };
+  wall.size = { width: 100, height: 10 };
   wall.asset = new PixelJS.AnimatedSprite();
   wall.asset.prepare({
     name: "wall_top.png",
@@ -104,7 +104,7 @@ function addHorizontalWall(pos, playerLayer) {
 function addVerticalWall(pos, playerLayer) {
   let wall = playerLayer.createEntity();
   wall.pos = pos;
-  wall.size = { width: 100, height: 100 };
+  wall.size = { width: 10, height: 100 };
   wall.asset = new PixelJS.AnimatedSprite();
   wall.asset.prepare({
     name: "wall_right.png",
@@ -223,27 +223,29 @@ document.onreadystatechange = function () {
 
     let playerLayer = game.createLayer("players");
 
-    addPowerUp({ x: 490, y: 350 }, playerLayer);
+    let powerUp = addPowerUp({ x: 490, y: 350 }, playerLayer);
 
     // Initial player setup
     addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer);
-    addPlayer("blue_tank.jpg", { x: 400, y: 300 }, playerLayer); // Add blue player initially invisible
+    addPlayer("blue_tank.jpg", { x: 450, y: 300 }, playerLayer); // Add blue player initially invisible
 
     bullets = [];
+    
+    let walls = [];
 
     // Walls around red tank
-    addHorizontalWall({ x: 175, y: 215 }, playerLayer);
-    addVerticalWall({ x: 225, y: 250 }, playerLayer);
-    addHorizontalWall({ x: 175, y: 290 }, playerLayer);
+    walls.push(addHorizontalWall({ x: 175, y: 240 }, playerLayer));
+    walls.push(addVerticalWall({ x: 265, y: 250 }, playerLayer));
+    walls.push(addHorizontalWall({ x: 175, y: 350 }, playerLayer));
 
     // Walls around blue tank
-    addHorizontalWall({ x: 380, y: 215 }, playerLayer);
-    addVerticalWall({ x: 365, y: 250 }, playerLayer);
-    addHorizontalWall({ x: 380, y: 290 }, playerLayer);
+    walls.push(addHorizontalWall({ x: 385, y: 240 }, playerLayer));
+    walls.push(addVerticalWall({ x: 385, y: 250 }, playerLayer));
+    walls.push(addHorizontalWall({ x: 385, y: 350 }, playerLayer));
 
-    addVerticalWall({ x: 209, y: 93 }, playerLayer);
+    walls.push(addVerticalWall({ x: 209, y: 93 }, playerLayer));
 
-    addVerticalWall({ x: 440, y: 393 }, playerLayer);
+    walls.push(addVerticalWall({ x: 440, y: 393 }, playerLayer));
 
     for (let i = 0; i < 10; i++) {
       bullets.push({
@@ -335,13 +337,13 @@ document.onreadystatechange = function () {
 
     bullets.forEach((bulletData) => {
       bulletData.bullet.onCollide(function (entity) {
-        if (
-          entity === players["blue_tank.jpg"] ||
-          entity === players["red_tank.jpg"]
-        ) {
-          bulletData.bullet.visible = false;
-          bulletData.bullet.pos = { x: 0, y: 0 };
+        // Only hide if bullet isn't colliding with powerup
+        if (entity === powerUp || bulletData.bullet.visible === false) {
+          return;
         }
+        console.log("Bullet hit:", entity);
+        bulletData.bullet.visible = false;
+        bulletData.bullet.pos = { x: 0, y: 0 };
         if (entity === players["red_tank.jpg"]) {
           console.log("Red tank hit!");
           health_tracker["red_tank.jpg"] -= 10;
@@ -384,7 +386,23 @@ document.onreadystatechange = function () {
     var health_tracker = { "blue_tank.jpg": 30, "red_tank.jpg": 30 };
     var scoreLayer = game.createLayer("score");
     scoreLayer.static = true;
-
+    scoreLayer.redraw = true;
+    scoreLayer.drawText(
+      "Red Health: " + health_tracker["red_tank.jpg"],
+      200,
+      50,
+      '14pt "Trebuchet MS", Helvetica, sans-serif',
+      "#FFFFFF",
+      "left"
+    );
+    scoreLayer.drawText(
+      "Blue Health: " + health_tracker["blue_tank.jpg"],
+      400,
+      50,
+      '14pt "Trebuchet MS", Helvetica, sans-serif',
+      "#FFFFFF",
+      "left"
+    );
     // Game loop
     game.loadAndRun(function (elapsedTime, dt) {
       move();
