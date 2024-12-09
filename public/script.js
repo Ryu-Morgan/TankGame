@@ -8,8 +8,9 @@ let lastDirections = {
   "red_tank.jpg": "right",
   "blue_tank.jpg": "left",
 };
-let walls=[];
-
+let walls = [];
+let powerups = [];
+let powerUp;
 // get the number of players in the room
 function getPlayersInRoom(roomID) {
   return fetch(`/api/room/${roomID}`)
@@ -146,13 +147,18 @@ socket.on("player move", function (data) {
 
     // Check for collision with walls
     let collision = false;
+    let collisionPowerUp = false;
 
     walls.forEach((wall) => {
-      if (newPos.x < wall.pos.x + wall.size.width && newPos.x + playerToMove.size.width > wall.pos.x && newPos.y < wall.pos.y + wall.size.height && newPos.y + playerToMove.size.height > wall.pos.y) {
+      if (
+        newPos.x < wall.pos.x + wall.size.width &&
+        newPos.x + playerToMove.size.width > wall.pos.x &&
+        newPos.y < wall.pos.y + wall.size.height &&
+        newPos.y + playerToMove.size.height > wall.pos.y
+      ) {
         collision = true;
       }
     });
-
 
     if (!collision) {
       playerToMove.pos = newPos;
@@ -162,6 +168,13 @@ socket.on("player move", function (data) {
 });
 
 socket.on;
+
+// power-up collected event
+socket.on("powerup collected", function (data) {
+  console.log("Power-up collected by:", data.tankImage);
+  // for each powerup in powerups, set the position based on data
+  powerUp.pos = data.pos;
+});
 
 let i = 0;
 socket.on("player shoot", function (data) {
@@ -243,7 +256,7 @@ document.onreadystatechange = function () {
 
     let playerLayer = game.createLayer("players");
 
-    let powerUp = addPowerUp({ x: 490, y: 350 }, playerLayer);
+    powerUp = addPowerUp({ x: 490, y: 350 }, playerLayer);
 
     // Initial player setup
     addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer);
@@ -251,10 +264,8 @@ document.onreadystatechange = function () {
 
     // For each player in players, we should add a handle to set velocity to 0 if colliding with wall, and back to 1 if not colliding with wall
 
-
-
     bullets = [];
-    
+
     // Walls around red tank
     walls.push(addHorizontalWall({ x: 175, y: 240 }, playerLayer));
     walls.push(addVerticalWall({ x: 265, y: 250 }, playerLayer));
@@ -356,6 +367,29 @@ document.onreadystatechange = function () {
         }
       });
     }
+
+    powerUp.onCollide(function (entity) {
+      if (entity === players["red_tank.jpg"]) {
+        console.log("Red tank collected power-up!");
+        socket.emit("powerup collected", { roomID: roomID });
+        // set players["red_tank.jpg"] velocity to 5 for 2 seconds, and then back to 1.'
+        players["red_tank.jpg"].velocity = { x: 5, y: 5 };
+        setTimeout(() => {
+          players["red_tank.jpg"].velocity = { x: 1, y: 1 };
+        }, 2000);
+      }
+      if (entity === players["blue_tank.jpg"]) {
+        console.log("Blue tank collected power-up!");
+
+        players["blue_tank.jpg"].velocity = { x: 5, y: 5 };
+
+        setTimeout(() => {
+          players["blue_tank.jpg"].velocity = { x: 1, y: 1 };
+        }, 2000);
+
+        socket.emit("powerup collected", { roomID: roomID });
+      }
+    });
 
     bullets.forEach((bulletData) => {
       bulletData.bullet.onCollide(function (entity) {

@@ -144,6 +144,23 @@ io.on("connection", (socket) => {
     io.to(data.roomID).emit("player move", data);
   });
 
+  let lastCollect = Date.now();
+  // Handle power-up collection
+  socket.on("powerup collected", (data) => {
+    let socketId = socket.id;
+    // add a delay to prevent spamming
+    if (Date.now() - lastCollect > 500) {
+      let tankImage = tankRooms[data.roomID].find(
+        (player) => player.socketID === socketId
+      ).tankImage;
+      data.tankImage = tankImage;
+      data.pos = { x: Math.random() * 800, y: Math.random() * 600 };
+      console.log("Received powerup collected:", data);
+      io.to(data.roomID).emit("powerup collected", data);
+    }
+    lastCollect = Date.now();
+  });
+
   socket.on("player shoot", (data) => {
     let socketId = socket.id;
     let tankImage = tankRooms[data.roomID].find(
