@@ -106,7 +106,7 @@ function addBullet(pos, playerLayer) {
 
 // Handle player movement
 socket.on("player move", function (data) {
-  console.log("Player move:", data);
+  //console.log("Player move:", data);
   let playerToMove = players[data.tankImage];
   if (playerToMove) {
     if (data.direction === "up") {
@@ -295,8 +295,50 @@ document.onreadystatechange = function () {
           bulletData.bullet.visible = false;
           bulletData.bullet.pos = { x: 0, y: 0 };
         }
+        if (entity === players["red_tank.jpg"]) {
+          console.log("Red tank hit!");
+          health_tracker["red_tank.jpg"] -= 10;
+        }
+        if (entity === players["blue_tank.jpg"]) {
+          console.log("Blue tank hit!");
+          health_tracker["blue_tank.jpg"] -= 10;
+        }
+        scoreLayer.redraw = true;
+        scoreLayer.drawText(
+          'Red Health: ' + health_tracker["red_tank.jpg"],
+          200,
+          50,
+          '14pt "Trebuchet MS", Helvetica, sans-serif',
+          '#FFFFFF',
+          'left'
+      );
+      scoreLayer.drawText(
+        'Blue Health: ' + health_tracker["blue_tank.jpg"],
+        400,
+        50,
+        '14pt "Trebuchet MS", Helvetica, sans-serif',
+        '#FFFFFF',
+        'left'
+      );
+
+      if (health_tracker["red_tank.jpg"] <= 0) {
+        alert("Blue tank wins!");
+        window.location.href = "/waiting/" + roomID;
+        health_tracker["red_tank.jpg"] = 30;
+      }
+      if (health_tracker["blue_tank.jpg"] <= 0) {
+        alert("Red tank wins!");
+        window.location.href = "/waiting/" + roomID;
+        health_tracker["blue_tank.jpg"] = 30;
+      }
       });
+
+      
     });
+
+    var health_tracker = {"blue_tank.jpg": 30, "red_tank.jpg": 30};
+    var scoreLayer = game.createLayer("score");
+    scoreLayer.static = true;
 
     // Game loop
     game.loadAndRun(function (elapsedTime, dt) {
