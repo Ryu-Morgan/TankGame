@@ -23,27 +23,26 @@ let roomID = urlParams.get("roomId");
 socket.emit("simple join", roomID);
 // assign enemyTank to the tank that is not myTank
 
-function addPowerUp(image, powerUpLayer) {
-  let powerUp = powerUpLayer.createEntity();
-  powerUp.pos = { x: 490, y: 350 };
+function addPowerUp(pos, playerLayer) {
+  let powerUp = playerLayer.createEntity();
+  powerUp.pos = pos;
   powerUp.size = { width: 100, height: 100 };
   powerUp.asset = new PixelJS.AnimatedSprite();
   powerUp.asset.prepare({
-    name: image,
+    name: "power_up.png",
     frames: 1,
     rows: 1,
     speed: 20,
     defaultFrame: 1,
   });
 
-  powerUpLayer.registerCollidable(powerUp);
+  playerLayer.registerCollidable(powerUp);
 
   console.log("Power-up added:", powerUp);
   return powerUp;
 }
 
-// Function to add a new player
-function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
+function addPlayer(tankImage, pos, playerLayer, visible = true) {
   let player = new PixelJS.Player();
   player.addToLayer(playerLayer);
   player.pos = pos;
@@ -62,27 +61,6 @@ function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   players[tankImage] = player;
   playerLayer.registerCollidable(player);
   console.log("Player added:", player);
-  playerLayer.redraw = true;
-
-  // Check for collision with power-up
-  let powerUp = addPowerUp("power_up.png", powerUpLayer);
-
-  player.onCollide(function (entity) {
-    if (entity === powerUp) {
-      console.log("Power-up collected!");
-      powerUp.pos = {
-        x: Math.floor(Math.random() * (700 - 100 + 1) + 100),
-        y: Math.floor(Math.random() * (500 - 100 + 1) + 100),
-      };
-      // increase speed of the player for 5 seconds
-      player.velocity = { x: 5, y: 5 };
-      player.speed = 200;
-      setTimeout(() => {
-        player.velocity = { x: 1, y: 1 };
-        player.speed = 100;
-      }, 3000);
-    }
-  });
 }
 
 function addBullet(pos, playerLayer) {
@@ -104,9 +82,47 @@ function addBullet(pos, playerLayer) {
   return bullet;
 }
 
+function addHorizontalWall(pos, playerLayer) {
+  let wall = playerLayer.createEntity();
+  wall.pos = pos;
+  wall.size = { width: 100, height: 100 };
+  wall.asset = new PixelJS.AnimatedSprite();
+  wall.asset.prepare({
+    name: "wall_top.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  playerLayer.registerCollidable(wall);
+
+  console.log("Bullet added:", wall);
+  return wall;
+}
+
+function addVerticalWall(pos, playerLayer) {
+  let wall = playerLayer.createEntity();
+  wall.pos = pos;
+  wall.size = { width: 100, height: 100 };
+  wall.asset = new PixelJS.AnimatedSprite();
+  wall.asset.prepare({
+    name: "wall_right.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
+
+  playerLayer.registerCollidable(wall);
+
+  console.log("Bullet added:", wall);
+  return wall;
+}
+
 // Handle player movement
 socket.on("player move", function (data) {
-  //console.log("Player move:", data);
+  // console.log(data);
   let playerToMove = players[data.tankImage];
   if (playerToMove) {
     if (data.direction === "up") {
@@ -124,6 +140,9 @@ socket.on("player move", function (data) {
     lastDirections[data.tankImage] = data.direction; // Update last direction
   }
 });
+
+socket.on;
+
 let i = 0;
 socket.on("player shoot", function (data) {
   let playerShooting = players[data.tankImage];
@@ -136,31 +155,42 @@ socket.on("player shoot", function (data) {
         i = 0;
       }
     }
-    
+
     bulletData.direction = lastDirections[data.tankImage]; // Set bullet direction
 
     if (bulletData.direction === "right") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x + playerShooting.size.width,
-      y: playerShooting.pos.y + playerShooting.size.height / 2 - bulletData.bullet.size.height / 2,
+        x: playerShooting.pos.x + playerShooting.size.width,
+        y:
+          playerShooting.pos.y +
+          playerShooting.size.height / 2 -
+          bulletData.bullet.size.height / 2,
       };
     } else if (bulletData.direction === "left") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x - bulletData.bullet.size.width,
-      y: playerShooting.pos.y + playerShooting.size.height / 2 - bulletData.bullet.size.height / 2,
+        x: playerShooting.pos.x - bulletData.bullet.size.width,
+        y:
+          playerShooting.pos.y +
+          playerShooting.size.height / 2 -
+          bulletData.bullet.size.height / 2,
       };
     } else if (bulletData.direction === "up") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x + playerShooting.size.width / 2 - bulletData.bullet.size.width / 2,
-      y: playerShooting.pos.y - bulletData.bullet.size.height,
+        x:
+          playerShooting.pos.x +
+          playerShooting.size.width / 2 -
+          bulletData.bullet.size.width / 2,
+        y: playerShooting.pos.y - bulletData.bullet.size.height,
       };
     } else if (bulletData.direction === "down") {
       bulletData.bullet.pos = {
-      x: playerShooting.pos.x + playerShooting.size.width / 2 - bulletData.bullet.size.width / 2,
-      y: playerShooting.pos.y + playerShooting.size.height,
+        x:
+          playerShooting.pos.x +
+          playerShooting.size.width / 2 -
+          bulletData.bullet.size.width / 2,
+        y: playerShooting.pos.y + playerShooting.size.height,
       };
     }
-
 
     bulletData.bullet.visible = true;
   }
@@ -193,23 +223,33 @@ document.onreadystatechange = function () {
 
     let playerLayer = game.createLayer("players");
 
-    // Power-up layer setup
-    let powerUpLayer = game.createLayer("items");
+    addPowerUp({ x: 490, y: 350 }, playerLayer);
 
     // Initial player setup
-    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer, powerUpLayer);
-    addPlayer(
-      "blue_tank.jpg",
-      { x: 400, y: 300 },
-      playerLayer,
-      powerUpLayer,
-      // false
-    ); // Add blue player initially invisible
+    addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer);
+    addPlayer("blue_tank.jpg", { x: 400, y: 300 }, playerLayer); // Add blue player initially invisible
 
     bullets = [];
 
+    // Walls around red tank
+    addHorizontalWall({ x: 175, y: 215 }, playerLayer);
+    addVerticalWall({ x: 225, y: 250 }, playerLayer);
+    addHorizontalWall({ x: 175, y: 290 }, playerLayer);
+
+    // Walls around blue tank
+    addHorizontalWall({ x: 380, y: 215 }, playerLayer);
+    addVerticalWall({ x: 365, y: 250 }, playerLayer);
+    addHorizontalWall({ x: 380, y: 290 }, playerLayer);
+
+    addVerticalWall({ x: 209, y: 93 }, playerLayer);
+
+    addVerticalWall({ x: 440, y: 393 }, playerLayer);
+
     for (let i = 0; i < 10; i++) {
-      bullets.push({ bullet: addBullet({ x: i, y: 0 }, playerLayer), direction: "right" });
+      bullets.push({
+        bullet: addBullet({ x: i, y: 0 }, playerLayer),
+        direction: "right",
+      });
     }
 
     bullets.forEach((bulletData) => {
@@ -257,7 +297,6 @@ document.onreadystatechange = function () {
           lastShot = Date.now();
         }
       }
-      
     }
 
     // Event listeners for key press and release
@@ -282,7 +321,12 @@ document.onreadystatechange = function () {
             bulletData.bullet.pos.y += 5;
           }
 
-          if (bulletData.bullet.pos.x > 800 || bulletData.bullet.pos.x < 0 || bulletData.bullet.pos.y > 600 || bulletData.bullet.pos.y < 0) {
+          if (
+            bulletData.bullet.pos.x > 800 ||
+            bulletData.bullet.pos.x < 0 ||
+            bulletData.bullet.pos.y > 600 ||
+            bulletData.bullet.pos.y < 0
+          ) {
             bulletData.bullet.visible = false;
           }
         }
@@ -291,7 +335,10 @@ document.onreadystatechange = function () {
 
     bullets.forEach((bulletData) => {
       bulletData.bullet.onCollide(function (entity) {
-        if (entity === players["blue_tank.jpg"] || entity === players["red_tank.jpg"]) {
+        if (
+          entity === players["blue_tank.jpg"] ||
+          entity === players["red_tank.jpg"]
+        ) {
           bulletData.bullet.visible = false;
           bulletData.bullet.pos = { x: 0, y: 0 };
         }
@@ -305,38 +352,36 @@ document.onreadystatechange = function () {
         }
         scoreLayer.redraw = true;
         scoreLayer.drawText(
-          'Red Health: ' + health_tracker["red_tank.jpg"],
+          "Red Health: " + health_tracker["red_tank.jpg"],
           200,
           50,
           '14pt "Trebuchet MS", Helvetica, sans-serif',
-          '#FFFFFF',
-          'left'
-      );
-      scoreLayer.drawText(
-        'Blue Health: ' + health_tracker["blue_tank.jpg"],
-        400,
-        50,
-        '14pt "Trebuchet MS", Helvetica, sans-serif',
-        '#FFFFFF',
-        'left'
-      );
+          "#FFFFFF",
+          "left"
+        );
+        scoreLayer.drawText(
+          "Blue Health: " + health_tracker["blue_tank.jpg"],
+          400,
+          50,
+          '14pt "Trebuchet MS", Helvetica, sans-serif',
+          "#FFFFFF",
+          "left"
+        );
 
-      if (health_tracker["red_tank.jpg"] <= 0) {
-        alert("Blue tank wins!");
-        window.location.href = "/waiting/" + roomID;
-        health_tracker["red_tank.jpg"] = 30;
-      }
-      if (health_tracker["blue_tank.jpg"] <= 0) {
-        alert("Red tank wins!");
-        window.location.href = "/waiting/" + roomID;
-        health_tracker["blue_tank.jpg"] = 30;
-      }
+        if (health_tracker["red_tank.jpg"] <= 0) {
+          alert("Blue tank wins!");
+          window.location.href = "/waiting/" + roomID;
+          health_tracker["red_tank.jpg"] = 30;
+        }
+        if (health_tracker["blue_tank.jpg"] <= 0) {
+          alert("Red tank wins!");
+          window.location.href = "/waiting/" + roomID;
+          health_tracker["blue_tank.jpg"] = 30;
+        }
       });
-
-      
     });
 
-    var health_tracker = {"blue_tank.jpg": 30, "red_tank.jpg": 30};
+    var health_tracker = { "blue_tank.jpg": 30, "red_tank.jpg": 30 };
     var scoreLayer = game.createLayer("score");
     scoreLayer.static = true;
 
@@ -353,7 +398,6 @@ document.onreadystatechange = function () {
       //     }
       //   }
       // });
-
     });
   }
 };

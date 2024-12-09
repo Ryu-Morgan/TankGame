@@ -14,6 +14,8 @@ let takenTanks = {};
 // Keep track of rooms
 let rooms = [];
 
+let powerups = [];
+
 let tankRooms = {};
 
 // Middleware to add CORS headers
@@ -133,17 +135,20 @@ io.on("connection", (socket) => {
     let socketId = socket.id;
     // We need to get the tank image for the player who sent the move.
     // We look in the tankRooms object for the room the player is in (taken from data.roomID) and find the player's tankImage.
-    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    let tankImage = tankRooms[data.roomID].find(
+      (player) => player.socketID === socketId
+    ).tankImage;
     // data does not come with tankImage so we add it to the data object
     data.tankImage = tankImage;
     console.log("Received player move:", data);
     io.to(data.roomID).emit("player move", data);
   });
 
-
   socket.on("player shoot", (data) => {
     let socketId = socket.id;
-    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    let tankImage = tankRooms[data.roomID].find(
+      (player) => player.socketID === socketId
+    ).tankImage;
     data.tankImage = tankImage;
     console.log("Received player shoot:", data);
     io.to(data.roomID).emit("player shoot", data);
