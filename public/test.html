@@ -57,6 +57,8 @@ let tanks = ["red_tank.jpg", "blue_tank.jpg"];
 //   return powerUp;
 // }
 
+
+
 // Function to add a new player
 function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   let player = new PixelJS.Player();
@@ -99,7 +101,24 @@ function addPlayer(tankImage, pos, playerLayer, powerUpLayer, visible = true) {
   //   }
   // });
 }
+function addBullet(pos, playerLayer) {
+  let bullet = playerLayer.createEntity();
+  bullet.pos = pos;
+  bullet.size = { width: 16, height: 5 };
+  bullet.asset = new PixelJS.AnimatedSprite();
+  bullet.asset.prepare({
+    name: "bullet.png",
+    frames: 1,
+    rows: 1,
+    speed: 20,
+    defaultFrame: 1,
+  });
 
+  playerLayer.registerCollidable(bullet);
+
+  console.log("Bullet added:", bullet);
+  return bullet;
+}
 // Handle player movement
 // socket.on("player move", function (data) {
 //   console.log("Player move:", data);
@@ -175,12 +194,23 @@ document.onreadystatechange = function () {
       { x: 400, y: 300 },
       playerLayer,
       powerUpLayer,
-      false,
+      true,
     ); // Add blue player initially invisible
+    bullets = [];
+    // Create 5 bullets and push them to the bullets array
+    for (let i = 0; i < 10; i++) {
+      bullets.push(addBullet({ x: i, y: 0 }, playerLayer));
+    }
+
+    // Make all the bullets invisible initially
+    bullets.forEach((bullet) => {
+      bullet.visible = false;
+    });
 
     // Movement state for both players
     let keys = {};
-
+    let lastShot = Date.now();
+    let i = 0;
     // Function to capture player movement
     function move() {
       if (keys["w"]) {
@@ -220,10 +250,39 @@ document.onreadystatechange = function () {
         // });
       }
       if (keys[" "]) {
+
         // doesn't work, seems like loaded is set to false
         // addPlayer("black_tank.jpg", { x: 0, y: 0 }, playerLayer, powerUpLayer);
         // weird fade in and out or ignores sometimes
-        players["red_tank.jpg"  ].visible = !players["red_tank.jpg"].visible;
+        // Only allow one command every 0.5 seconds
+
+        // players["red_tank.jpg"].visible = !players["red_tank.jpg"].visible;
+        if (Date.now() - lastShot > 500) {
+
+          // Find the first bullet that is not visible and set it to visible
+          let bullet = bullets.find((bullet) => !bullet.visible);
+          // if bullet doesn't exist, return bullets[i] and increment i
+          if (!bullet) {
+            bullet = bullets[i];
+            i++;
+            if (i >= bullets.length) {
+              i = 0;
+            }
+          }
+
+          // Put the bullet in front of the player
+          bullet.pos = {
+            x: players["red_tank.jpg"].pos.x + 32,
+            y: players["red_tank.jpg"].pos.y + 4,
+          };
+
+          // Make the bullet visible
+          bullet.visible = true;
+
+
+          lastShot = Date.now();
+        }
+
       }
     }
 
@@ -237,9 +296,33 @@ document.onreadystatechange = function () {
       keys[event.key] = false;
     });
 
+    function moveBullets() {
+      bullets.forEach((bullet) => {
+        if (bullet.visible) {
+          bullet.pos.x += 5;
+          if (bullet.pos.x > 800) {
+            bullet.visible = false;
+          }
+        }
+      });
+    }
+
     // Game loop
     game.loadAndRun(function (elapsedTime, dt) {
       move();
+      moveBullets();
+
+      // Add collision for bullets, if it collides with the enemy tank, make it invisible and set position of bullet to 0,0
+      bullets.forEach((bullet) => {
+        if (bullet.visible) {
+          if (players["blue_tank.jpg"].collidesWith(bullet)) {
+            bullet.visible = false;
+            bullet.pos = { x: 0, y: 0 };
+          }
+        }
+      });
+
+
     });
   }
 };

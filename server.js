@@ -140,6 +140,15 @@ io.on("connection", (socket) => {
     io.to(data.roomID).emit("player move", data);
   });
 
+
+  socket.on("player shoot", (data) => {
+    let socketId = socket.id;
+    let tankImage = tankRooms[data.roomID].find((player) => player.socketID === socketId).tankImage;
+    data.tankImage = tankImage;
+    console.log("Received player shoot:", data);
+    io.to(data.roomID).emit("player shoot", data);
+  });
+
   socket.on("disconnect", () => {
     console.log("user disconnected");
     for (let roomId in takenTanks) {
