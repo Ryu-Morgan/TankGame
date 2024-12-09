@@ -8,6 +8,7 @@ let lastDirections = {
   "red_tank.jpg": "right",
   "blue_tank.jpg": "left",
 };
+let walls=[];
 
 // get the number of players in the room
 function getPlayersInRoom(roomID) {
@@ -46,7 +47,7 @@ function addPlayer(tankImage, pos, playerLayer, visible = true) {
   let player = new PixelJS.Player();
   player.addToLayer(playerLayer);
   player.pos = pos;
-  player.size = { width: 32, height: 32 };
+  player.size = { width: 25, height: 20 };
   player.velocity = { x: 1, y: 1 };
   player.asset = new PixelJS.AnimatedSprite();
   player.asset.prepare({
@@ -111,7 +112,7 @@ function addVerticalWall(pos, playerLayer) {
     frames: 1,
     rows: 1,
     speed: 20,
-    defaultFrame: 1,
+    defaultFrame: 0,
   });
 
   playerLayer.registerCollidable(wall);
@@ -124,20 +125,39 @@ function addVerticalWall(pos, playerLayer) {
 socket.on("player move", function (data) {
   // console.log(data);
   let playerToMove = players[data.tankImage];
+
+  // We should check if that position contains a wall, if it does we should just return. There aren't helper functions for this
+  // So we need to go through our walls array and check if the player would collide with any of them if they moved
+
   if (playerToMove) {
+    let newPos = { ...playerToMove.pos };
     if (data.direction === "up") {
-      playerToMove.pos.y -= playerToMove.velocity.y * data.amount;
+      newPos.y -= playerToMove.velocity.y * data.amount;
     }
     if (data.direction === "down") {
-      playerToMove.pos.y += playerToMove.velocity.y * data.amount;
+      newPos.y += playerToMove.velocity.y * data.amount;
     }
     if (data.direction === "left") {
-      playerToMove.pos.x -= playerToMove.velocity.x * data.amount;
+      newPos.x -= playerToMove.velocity.x * data.amount;
     }
     if (data.direction === "right") {
-      playerToMove.pos.x += playerToMove.velocity.x * data.amount;
+      newPos.x += playerToMove.velocity.x * data.amount;
     }
-    lastDirections[data.tankImage] = data.direction; // Update last direction
+
+    // Check for collision with walls
+    let collision = false;
+
+    walls.forEach((wall) => {
+      if (newPos.x < wall.pos.x + wall.size.width && newPos.x + playerToMove.size.width > wall.pos.x && newPos.y < wall.pos.y + wall.size.height && newPos.y + playerToMove.size.height > wall.pos.y) {
+        collision = true;
+      }
+    });
+
+
+    if (!collision) {
+      playerToMove.pos = newPos;
+      lastDirections[data.tankImage] = data.direction; // Update last direction
+    }
   }
 });
 
@@ -229,10 +249,12 @@ document.onreadystatechange = function () {
     addPlayer("red_tank.jpg", { x: 200, y: 300 }, playerLayer);
     addPlayer("blue_tank.jpg", { x: 450, y: 300 }, playerLayer); // Add blue player initially invisible
 
+    // For each player in players, we should add a handle to set velocity to 0 if colliding with wall, and back to 1 if not colliding with wall
+
+
+
     bullets = [];
     
-    let walls = [];
-
     // Walls around red tank
     walls.push(addHorizontalWall({ x: 175, y: 240 }, playerLayer));
     walls.push(addVerticalWall({ x: 265, y: 250 }, playerLayer));
